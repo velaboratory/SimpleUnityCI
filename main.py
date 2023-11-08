@@ -155,7 +155,13 @@ def find_unity_install(version: str) -> str:
     for p in paths:
         if p == version:
             print("Unity version found: " + p)
-            return os.path.join(installs_folder, p, "Editor", "Unity.exe")
+            if sys.platform == 'win32':
+                return os.path.join(installs_folder, p, "Editor", "Unity.exe")
+            elif sys.platform == 'darwin':
+                return os.path.join(installs_folder, p, "Unity.app", "Contents", "MacOS", "Unity")
+            else:
+                print("Unsupported platform!")
+                return None
     print(f"Unity version not found! {version}")
     return None
 
@@ -187,8 +193,10 @@ def upload_build(request_data: UnityBuildRequest, build_path: str):
 
 
 async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
+    start_time = time.time()
     task_folder = os.path.join(tasks_folder, task_id)
     os.makedirs(task_folder, exist_ok=True)
+    os.makedirs(projects_folder, exist_ok=True)
 
     git_repo_data = parse_git_repo(request_data.git_repo, request_data.build_target)
     path = git_repo_data["path"]
@@ -222,15 +230,25 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         return None
     # cmd = f'"{unity_install}" {args}'
 
-    ps1 = f'$unity = Start-Process -FilePath "{unity_install}" -ArgumentList "{args}" -PassThru\n'
-    with open("PS1Wait.ps1", "r") as f:
-        ps1 += f.read()
-    with open(os.path.join(task_folder, f"build.ps1"), "w") as f:
-        f.write(ps1)
+    if sys.platform == 'win32':
+        cmd = f'$unity = Start-Process -FilePath "{unity_install}" -ArgumentList "{args}" -PassThru\n'
+        with open("PS1Wait.ps1", "r") as f:
+            cmd += f.read()
+        with open(os.path.join(task_folder, f"build.ps1"), "w") as f:
+            f.write(cmd)
 
-    cmd = f'powershell.exe -command ".\\{task_folder}\\build.ps1"'
-    print(cmd)
-    ret = os.system(cmd)
+        cmd = f'powershell.exe -command ".\\{task_folder}\\build.ps1"'
+        print(cmd)
+        ret = os.system(cmd)
+    elif sys.platform == 'darwin':
+        args = args.replace('`', '')
+        cmd = f'{unity_install} {args}'
+        print(cmd)
+        ret = os.system(cmd)
+    else:
+        print('Platform not supported!')
+        return None
+    print(f"Finished in {time.time() - start_time:.3f} s")
     print(f"Done building! Exit code: {ret}")
     if os.path.exists(os.path.join(task_folder, build_path)):
         if request_data.oculus_app_id is not None:
