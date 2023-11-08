@@ -65,6 +65,10 @@ class UnityBuildRequest(BaseModel):
     oculus_app_id: str | None = None
     oculus_app_secret: str | None = None
     oculus_release_channel: str | None = None
+    keystore_name: str | None = None
+    keystore_pass: str | None = None
+    keyalias_name: str | None = None
+    keyalias_pass: str | None = None
 
 
 class GitRepo(BaseModel):
@@ -194,6 +198,7 @@ def upload_build(request_data: UnityBuildRequest, build_path: str):
 
 async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     start_time = time.time()
+    print(f"Starting task: {task_id}")
     task_folder = os.path.join(tasks_folder, task_id)
     os.makedirs(task_folder, exist_ok=True)
     os.makedirs(projects_folder, exist_ok=True)
@@ -203,7 +208,7 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     if not os.path.exists(path):
         r = Repo.clone_from(request_data.git_repo, path)
     repo = Repo(path)
-    # repo.git.reset("--hard")
+    repo.git.reset("--hard")
     repo.remotes.origin.pull()
 
     project = find_unity_project_in_path(path)
@@ -217,7 +222,7 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         build_path = os.path.join(
             os.getcwd(), task_folder, git_repo_data["project"] + ".apk"
         )
-        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project["path"]}`" -executeMethod Builder.BuildAndroid `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
+        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project["path"]}`" -executeMethod Builder.Build -buildTarget Android -keystoreName {request_data.keystore_name} -keystorePass {request_data.keystore_pass} -keyaliasName {request_data.keyalias_name} -keyaliasPass {request_data.keyalias_pass} -outputPath `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
     elif request_data.build_target == BuildTargetEnum.StandaloneWindows64:
         build_path = os.path.join(
             os.getcwd(), task_folder, "build", git_repo_data["project"] + ".exe"
