@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 
-namespace SimpleUnityCI {
+#if UNITY_EDITOR
+namespace SimpleUnityCI
+{
 	public class Builder
 	{
-
 		// This function will be called from the build process
 		public static void Build()
 		{
@@ -45,7 +45,7 @@ namespace SimpleUnityCI {
 					flags[argument] = true;
 				}
 			}
-			
+
 			if (values.TryGetValue("-keystoreName", out string value)) PlayerSettings.Android.keystoreName = value;
 			if (values.TryGetValue("-keystorePass", out string value1)) PlayerSettings.Android.keystorePass = value1;
 			if (values.TryGetValue("-keyaliasName", out string value2)) PlayerSettings.Android.keyaliasName = value2;
@@ -58,8 +58,9 @@ namespace SimpleUnityCI {
 				target = buildTarget,
 				locationPathName = values["-outputPath"],
 			};
-			
+
 			BuildPipeline.BuildPlayer(options);
 		}
 	}
 }
+#endif
