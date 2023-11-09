@@ -1,0 +1,23 @@
+name: Publish to NPM
+on:
+  push:
+    branches: [main,master]
+    paths:
+      - unity_package/**
+jobs:
+  publish-npm:
+    defaults:
+      run:
+        working-directory: unity_package
+    name: set up npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: http://npm.ugavel.com/
+      - name: actually publish
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.VERDACCIO_TOKEN}}
