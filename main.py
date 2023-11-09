@@ -222,7 +222,7 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         build_path = os.path.join(
             os.getcwd(), task_folder, git_repo_data["project"] + ".apk"
         )
-        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project["path"]}`" -executeMethod Builder.Build -buildTarget Android -keystoreName {request_data.keystore_name} -keystorePass {request_data.keystore_pass} -keyaliasName {request_data.keyalias_name} -keyaliasPass {request_data.keyalias_pass} -outputPath `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
+        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project["path"]}`" -executeMethod SimpleUnityCI.Builder.Build -buildTarget Android -keystoreName {request_data.keystore_name} -keystorePass {request_data.keystore_pass} -keyaliasName {request_data.keyalias_name} -keyaliasPass {request_data.keyalias_pass} -outputPath `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
     elif request_data.build_target == BuildTargetEnum.StandaloneWindows64:
         build_path = os.path.join(
             os.getcwd(), task_folder, "build", git_repo_data["project"] + ".exe"
