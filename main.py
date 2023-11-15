@@ -172,14 +172,16 @@ def find_unity_install(version: str) -> str:
 
 def upload_build(request_data: UnityBuildRequest, build_path: str):
     print("Uploading build to Oculus...")
-    release_channel = request_data["oculus_release_channel"]
+    release_channel = request_data.oculus_release_channel
     if release_channel is None:
         release_channel = "DEV"
-    if request_data["build_target"] == BuildTargetEnum.Android:
-        os.system(
-            f'tools\\ovr-platform-util.exe upload-quest-build --app-id {request_data["oculus_app_id"]} --app-secret {request_data["oculus_app_secret"]} --apk {build_path} --channel {release_channel}'
-        )
-    elif request_data["build_target"] == BuildTargetEnum.StandaloneWindows64:
+    if request_data.build_target == BuildTargetEnum.Android:
+        args = f' upload-quest-build --app-id {request_data.oculus_app_id} --app-secret {request_data.oculus_app_secret} --apk {build_path} --channel {release_channel}'
+        if sys.platform == 'win32':
+            os.system(f'{os.path.join("tools","ovr-platform-util.exe")}' + args)
+        elif sys.platform == 'darwin':
+            os.system(f'./{os.path.join("tools","ovr-platform-util")}' + args)
+    elif request_data.build_target == BuildTargetEnum.StandaloneWindows64:
         build_folder = os.path.dirname(build_path)
         git_repo_data = parse_git_repo(request_data.git_repo, request_data.build_target)
         settings_file = glob.glob(f"{git_repo_data}/**/ProjectSettings.asset")[0]
@@ -256,6 +258,7 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     print(f"Finished in {time.time() - start_time:.3f} s")
     print(f"Done building! Exit code: {ret}")
     if os.path.exists(os.path.join(task_folder, build_path)):
+        print(os.path.join(task_folder, build_path))
         if request_data.oculus_app_id is not None:
             upload_build(request_data, build_path)
         return True
