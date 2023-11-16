@@ -1,10 +1,11 @@
 import asyncio
 from enum import Enum
+import subprocess
 import sys
 import os
 import time
 import uuid
-from fastapi import BackgroundTasks, FastAPI, Request, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 import re
@@ -28,15 +29,13 @@ def list_projects():
     orgs = [p for p in os.listdir(projects_folder)]
     project_folders = []
     for o in orgs:
-        project_folders.extend(
-            [f"{o}/{p}" for p in os.listdir(os.path.join(projects_folder, o))]
-        )
+        project_folders.extend([f"{o}/{p}" for p in os.listdir(os.path.join(projects_folder, o))])
     return project_folders
 
 
 @app.get("/tasks")
 def list_tasks():
-    folders = [p for p in os.listdir(tasks_folder)]
+    folders = [{p: os.listdir(os.path.join(tasks_folder, p))} for p in os.listdir(tasks_folder)]
     return folders
 
 
@@ -84,9 +83,7 @@ class UnityProject(BaseModel):
 
 
 def generate_sortable_uuid():
-    timestamp = int(
-        time.time() * 1e7
-    )  # Convert current time to 100-nanosecond intervals
+    timestamp = int(time.time() * 1e7)  # Convert current time to 100-nanosecond intervals
     unique_id = uuid.uuid4()
     sortable_uuid = uuid.UUID(int=(timestamp << 64) | (unique_id.int >> 64))
     return str(sortable_uuid)
@@ -106,161 +103,206 @@ def build_project(
 
 
 @app.get("/task/{task_id}/build.log")
-def get_status(task_id: str):
+def get_build_status(task_id: str):
     log = os.path.join(tasks_folder, task_id, "build.log")
+    if not os.path.exists(log):
+        raise HTTPException(status_code=404, detail="File not found")
     with open(log, "r") as f:
         return PlainTextResponse(f.read())
 
 
 @app.get("/task/{task_id}/task.log")
-def get_status(task_id: str):
+def get_task_status(task_id: str):
     log = os.path.join(tasks_folder, task_id, "task.log")
+    if not os.path.exists(log):
+        raise HTTPException(status_code=404, detail="File not found")
     with open(log, "r") as f:
         return PlainTextResponse(f.read())
 
 
-def parse_git_repo(git_repo: str, build_target: BuildTargetEnum) -> GitRepo:
+def parse_git_repo(task_id: str, git_repo: str, build_target: BuildTargetEnum) -> GitRepo | None:
     regex = r"(?:https:\/\/|git@)(?:github\.com[:\/])?([\w-]+)\/([\w-]+)\.git"
     match = re.search(regex, git_repo)
     if match:
         org_name = match.group(1)
         project_name = match.group(2)
-        return {
-            "git_repo": git_repo,
-            "org": org_name,
-            "project": project_name,
-            "path": os.path.join(projects_folder, org_name, project_name, build_target),
-        }
+        return GitRepo(
+            git_repo=git_repo,
+            org=org_name,
+            project=project_name,
+            path=os.path.join(projects_folder, org_name, project_name, build_target),
+        )
     else:
-        print("Not a valid github url")
+        log(task_id, "Not a valid github url")
         return None
 
 
-def find_unity_project_in_path(path: str) -> UnityProject:
+def find_unity_project_in_path(task_id: str, path: str) -> UnityProject | None:
     version_files = glob.glob(f"{path}/**/ProjectVersion.txt", recursive=True)
     if len(version_files) > 1:
-        print("Too many unity projects")
+        log(task_id, "Too many unity projects")
         return None
     elif len(version_files) < 1:
-        print("No unity project found")
+        log(task_id, "No unity project found")
         return None
     else:
         with open(version_files[0], "r") as f:
             lines = f.readlines()
-            project: UnityProject = {
-                "path": version_files[0].split("ProjectSettings")[0].strip(),
-                "version": lines[0].split(": ")[1].strip(),
-            }
+            project = UnityProject(
+                path=version_files[0].split("ProjectSettings")[0].strip(),
+                version=lines[0].split(": ")[1].strip(),
+            )
             return project
 
 
-def find_unity_install(version: str) -> str:
+def find_unity_install(task_id: str, version: str) -> str | None:
     paths = os.listdir(installs_folder)
     for p in paths:
         if p == version:
-            print("Unity version found: " + p)
-            if sys.platform == 'win32':
+            log(task_id, "Unity version found: " + p)
+            if sys.platform == "win32":
                 return os.path.join(installs_folder, p, "Editor", "Unity.exe")
-            elif sys.platform == 'darwin':
+            elif sys.platform == "darwin":
                 return os.path.join(installs_folder, p, "Unity.app", "Contents", "MacOS", "Unity")
             else:
-                print("Unsupported platform!")
+                log("Unsupported platform!")
                 return None
-    print(f"Unity version not found! {version}")
+    log(task_id, f"Unity version not found! {version}")
     return None
 
 
-def upload_build(request_data: UnityBuildRequest, build_path: str):
-    print("Uploading build to Oculus...")
+def upload_build(task_id: str, request_data: UnityBuildRequest, build_path: str):
+    log(task_id, "Uploading build to Oculus...")
     release_channel = request_data.oculus_release_channel
     if release_channel is None:
         release_channel = "DEV"
     if request_data.build_target == BuildTargetEnum.Android:
-        args = f' upload-quest-build --app-id {request_data.oculus_app_id} --app-secret {request_data.oculus_app_secret} --apk {build_path} --channel {release_channel}'
-        if sys.platform == 'win32':
+        args = f" upload-quest-build --app-id {request_data.oculus_app_id} --app-secret {request_data.oculus_app_secret} --apk {build_path} --channel {release_channel}"
+        if sys.platform == "win32":
             os.system(f'{os.path.join("tools","ovr-platform-util.exe")}' + args)
-        elif sys.platform == 'darwin':
+        elif sys.platform == "darwin":
             os.system(f'./{os.path.join("tools","ovr-platform-util")}' + args)
     elif request_data.build_target == BuildTargetEnum.StandaloneWindows64:
         build_folder = os.path.dirname(build_path)
-        git_repo_data = parse_git_repo(request_data.git_repo, request_data.build_target)
+        git_repo_data = parse_git_repo(task_id, request_data.git_repo, request_data.build_target)
         settings_file = glob.glob(f"{git_repo_data}/**/ProjectSettings.asset")[0]
         with open(settings_file, "r") as f:
             text = f.read()
             app_version = re.search("bundleVersion: (.*)", text)
-            print(f"{app_version=}")
-        os.system(
-            f'tools\\ovr-platform-util.exe upload-rift-build --app-id {request_data["oculus_app_id"]} --app-secret {request_data["oculus_app_secret"]} --build-dir "{build_folder}" --launch-file "{build_path}" --launch-file-2d "{build_path}" -p " -useVR" --launch-params-2d "-2dmode" --channel {release_channel} --version "{app_version}"'
-        )
+            log(task_id, f"{app_version=}")
+
+        with open(os.path.join(tasks_folder, task_id, "task.log"), "a") as f:
+            return_code = subprocess.call(
+                [
+                    os.path.join("tools\\ovr-platform-util.exe"),
+                    "upload-rift-build",
+                    "--app-id",
+                    request_data.oculus_app_id,
+                    "--app-secret",
+                    request_data.oculus_app_secret,
+                    "--build-dir",
+                    build_folder,
+                    "--launch-file",
+                    build_path,
+                    "--launch-file-2d",
+                    build_path,
+                    "-p",
+                    "-useVR",
+                    "--launch-params-2d",
+                    "-2dmode",
+                    "--channel",
+                    release_channel,
+                    "--version",
+                    app_version,
+                ],  # type: ignore
+                stdout=f,
+                stderr=f,
+            )
+            log(task_id, str(return_code))
     else:
-        print("Platform not supported for upload")
+        log(task_id, "Platform not supported for upload")
         return
-    print("Done uploading")
+    log(task_id, "Done uploading")
 
 
 async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     start_time = time.time()
-    print(f"Starting task: {task_id}")
     task_folder = os.path.join(tasks_folder, task_id)
     os.makedirs(task_folder, exist_ok=True)
     os.makedirs(projects_folder, exist_ok=True)
+    log(task_id, f"Starting task: {task_id}")
 
-    git_repo_data = parse_git_repo(request_data.git_repo, request_data.build_target)
-    path = git_repo_data["path"]
+    git_repo_data = parse_git_repo(task_id, request_data.git_repo, request_data.build_target)
+    if git_repo_data is None:
+        log(task_id, "Failed.")
+        return
+    path = git_repo_data.path
     if not os.path.exists(path):
         r = Repo.clone_from(request_data.git_repo, path)
     repo = Repo(path)
     repo.git.reset("--hard")
     repo.remotes.origin.pull()
 
-    project = find_unity_project_in_path(path)
-    unity_install = find_unity_install(project["version"])
+    project = find_unity_project_in_path(task_id, path)
+    if project is None:
+        log(task_id, "Failed.")
+        return
+    unity_install = find_unity_install(task_id, project.version)
     if unity_install is None:
+        log(task_id, "Failed.")
         return
 
     build_path = ""
 
     if request_data.build_target == BuildTargetEnum.Android:
-        build_path = os.path.join(
-            os.getcwd(), task_folder, git_repo_data["project"] + ".apk"
-        )
-        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project["path"]}`" -executeMethod SimpleUnityCI.Builder.Build -buildTarget Android -keystoreName {request_data.keystore_name} -keystorePass {request_data.keystore_pass} -keyaliasName {request_data.keyalias_name} -keyaliasPass {request_data.keyalias_pass} -outputPath `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
+        build_path = os.path.join(os.getcwd(), task_folder, git_repo_data.project + ".apk")
+        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project.path}`" -executeMethod SimpleUnityCI.Builder.Build -buildTarget Android -keystoreName {request_data.keystore_name} -keystorePass {request_data.keystore_pass} -keyaliasName {request_data.keyalias_name} -keyaliasPass {request_data.keyalias_pass} -outputPath `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
     elif request_data.build_target == BuildTargetEnum.StandaloneWindows64:
-        build_path = os.path.join(
-            os.getcwd(), task_folder, "build", git_repo_data["project"] + ".exe"
-        )
+        build_path = os.path.join(os.getcwd(), task_folder, "build", git_repo_data.project + ".exe")
         # os.makedirs(build_path, exist_ok=True)
-        print(f"{build_path=}")
-        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project["path"]}`" -buildWindows64Player `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
+        log(task_id, f"{build_path=}")
+        args = f'-quit -batchmode -disable-assembly-updater -projectpath `"{project.path}`" -buildWindows64Player `"{build_path}`" -logFile `"{os.path.join(task_folder, "build.log")}`"'
     else:
-        print("Platform not supported!")
-        return None
-    # cmd = f'"{unity_install}" {args}'
+        log(task_id, "Platform not supported!")
+        log(task_id, "Failed.")
+        return
 
-    if sys.platform == 'win32':
-        cmd = f'$unity = Start-Process -FilePath "{unity_install}" -ArgumentList "{args}" -PassThru\n'
+    if sys.platform == "win32":
+        cmd = (
+            f'$unity = Start-Process -FilePath "{unity_install}" -ArgumentList "{args}" -PassThru\n'
+        )
         with open("PS1Wait.ps1", "r") as f:
             cmd += f.read()
         with open(os.path.join(task_folder, f"build.ps1"), "w") as f:
             f.write(cmd)
 
         cmd = f'powershell.exe -command ".\\{task_folder}\\build.ps1"'
-        print(cmd)
+        log(task_id, cmd)
         ret = os.system(cmd)
-    elif sys.platform == 'darwin':
-        args = args.replace('`', '')
-        cmd = f'{unity_install} {args}'
-        print(cmd)
+    elif sys.platform == "darwin":
+        args = args.replace("`", "")
+        cmd = f"{unity_install} {args}"
+        log(cmd)
         ret = os.system(cmd)
     else:
-        print('Platform not supported!')
-        return None
-    print(f"Finished in {time.time() - start_time:.3f} s")
-    print(f"Done building! Exit code: {ret}")
+        log("Platform not supported!")
+        log(task_id, "Failed.")
+        return
+    log(task_id, f"Finished in {time.time() - start_time:.3f} s")
+    log(task_id, f"Done building! Exit code: {ret}")
     if os.path.exists(os.path.join(task_folder, build_path)):
-        print(os.path.join(task_folder, build_path))
+        log(task_id, os.path.join(task_folder, build_path))
         if request_data.oculus_app_id is not None:
-            upload_build(request_data, build_path)
+            upload_build(task_id, request_data, build_path)
+        log(task_id, "Success.")
         return True
     else:
+        log(task_id, "Failed.")
         return False
+
+
+def log(task_id: str, message: str):
+    print(message)
+    log_file = os.path.join(tasks_folder, task_id, "task.log")
+    with open(log_file, "a") as f:
+        f.write(message + "\n")
