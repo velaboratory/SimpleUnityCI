@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Unity CI</title>
+    <link rel="stylesheet" href="/static/css/simple.min.css">
+    <script src="/static/js/alpine.min.js" defer></script>
+    <script src="/static/js/dayjs.min.js"></script>
+    <script src="/static/js/relativeTime.min.js"></script>
+    <style>
+        :root {
+            --accent: rgb(192, 36, 36);
+        }
+    </style>
+</head>
+
+<body x-data="{
+    formData: {
+    git_repo: '',
+    build_target: 'StandaloneWindows64',
+    oculus_app_id: '',
+    oculus_app_secret: '',
+    oculus_release_channel: '',
+    keystore_name: '',
+    keystore_pass: '',
+    keyalias_name: '',
+    keyalias_pass: ''
+  },
+  json:'{}'
+}">
+    <h1>Simple Unity CI</h1>
+    <div>
+        <a class="button" href="/docs">API Docs</a>
+        <a class="button" href="https://github.com/velaboratory/SimpleUnityCI">View Source on GitHub</a>
+    </div>
+
+    <article>
+        <h3 style="margin-top:0;">Run New Task</h3>
+        <form x-on:submit.prevent="
+            fetch('/build', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(r => r.json())
+            .then((result) => {
+            console.log('Success:', result);
+            })
+            .catch((error) => {
+            console.error('Error:', error);
+            });">
+            <div style="display:flex; flex-direction: row; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <label>git_repo<br /><input x-model="formData.git_repo" /></label>
+                    <label>build_target<br /><input x-model="formData.build_target" /></label>
+                </div>
+                <div>
+                    <h5>Oculus Upload (optional)</h5>
+                    <label>oculus_app_id<br /><input x-model="formData.oculus_app_id" /></label>
+                    <label>oculus_app_secret<br /><input x-model="formData.oculus_app_secret" /></label>
+                    <label>oculus_release_channel<br /><input x-model="formData.oculus_release_channel" /></label>
+                </div>
+                <div>
+                    <h5>Android Keystore (optional)</h5>
+                    <label>keystore_name<br /><input x-model="formData.keystore_name" /></label>
+                    <label>keystore_pass<br /><input x-model="formData.keystore_pass" /></label>
+                    <label>keyalias_name<br /><input x-model="formData.keyalias_name" /></label>
+                    <label>keyalias_pass<br /><input x-model="formData.keyalias_pass" /></label>
+                </div>
+            </div>
+
+            <textarea x-bind:value="JSON.stringify(formData, null, 2)"
+                x-on:change="()=>{formData = JSON.parse($event.target.value)}" style="height:20rem;"></textarea>
+
+            <button type="submit">BUILD</button>
+        </form>
+
+    </article>
+
+
+    <article>
+        <h3 style="margin-top:0;">Tasks</h3>
+        <div id="tasks"></div>
+    </article>
+
+    <article>
+        <h3 style="margin-top:0;">Downloaded Projects</h3>
+        <ul id="projects"></ul>
+    </article>
+
+    <article>
+        <h3 style="margin-top:0;">Downloaded Unity Versions</h3>
+        <ul id="versions"></ul>
+    </article>
+
+    <script defer>
+        dayjs.extend(dayjs_plugin_relativeTime)
+
+        fetch('/tasks')
+            .then(r => r.json())
+            .then(t => {
+                tasks.innerHTML = t.reverse().map(t => taskBlock(t)).join('\n')
+            })
+
+        function taskBlock(t) {
+            return `<blockquote>
+                ${t.metadata.git_repo ? `<a href="/tasks/${t.task_id}/metadata.json" target="_blank"><h4 style='margin:.5rem;'>${t.metadata.git_repo}</h4></a>` : ''}
+                ${Object.keys(t.files).map(p =>
+                `<div><a href='/tasks/${t.task_id}/${p}' target="_blank">${p}</a> - ${t.files[p] ? dayjs(t.files[p]).format('YYYY-MM-DD hh:mm A') : 'N/A'} - ${t.files[p] ? dayjs(t.files[p]).fromNow() : ''}</div>`).join('')
+                }
+                </blockquote >`
+        }
+
+        fetch('/projects')
+            .then(r => r.json())
+            .then(t => {
+                projects.innerHTML = t.reverse().map(t => `<li>${t}</li>`).join('\n')
+            })
+
+        fetch('/unity_versions')
+            .then(r => r.json())
+            .then(t => {
+                versions.innerHTML = t.reverse().map(t => `<li>${t}</li>`).join('\n')
+            })
+    </script>
+    <script>
+
+    </script>
+</body>
+
+</html>
