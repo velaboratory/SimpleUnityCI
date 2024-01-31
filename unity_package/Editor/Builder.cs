@@ -1,9 +1,9 @@
+#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 
-#if UNITY_EDITOR
 namespace SimpleUnityCI
 {
 	public class Builder

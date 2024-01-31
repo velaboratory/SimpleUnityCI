@@ -1,7 +1,7 @@
 {
     "name": "edu.uga.engr.vel.simpleunityci",
     "displayName": "SimpleUnityCI",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "unity": "2019.1",
     "description": "Build scripts for CI.",
     "keywords": [
@@ -11,6 +11,6 @@
     "author": {
         "name": "Virtual Experiences Laboratory",
         "email": "vel@velaboratory.com",
-        "url": "https://vel.engr.uga.edu"
+        "url": "https://velaboratory.com"
     }
 }

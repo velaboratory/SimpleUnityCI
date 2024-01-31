@@ -92,7 +92,7 @@ def parse_git_repo(task_id: str, git_repo: str, build_target: BuildTargetEnum) -
             path=os.path.join(projects_folder, org_name, project_name, build_target),
         )
     else:
-        log(task_id, "Not a valid github url")
+        log(task_id, "Not a valid github url: " + git_repo)
         return None
 
 
