@@ -11,15 +11,6 @@ namespace SimpleUnityCI
 		// This function will be called from the build process
 		public static void Build()
 		{
-			List<string> buildIndexScenes = new List<string>();
-			foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
-			{
-				if (scene.enabled)
-				{
-					buildIndexScenes.Add(scene.path);
-				}
-			}
-
 			string[] arguments = Environment.GetCommandLineArgs();
 			Dictionary<string, bool> flags = new Dictionary<string, bool>()
 			{
@@ -54,7 +45,7 @@ namespace SimpleUnityCI
 			Enum.TryParse(values["-buildTarget"], out BuildTarget buildTarget);
 			BuildPlayerOptions options = new BuildPlayerOptions
 			{
-				scenes = buildIndexScenes.ToArray(),
+				scenes = (from scene in EditorBuildSettings.scenes where scene.enabled select scene.path).ToArray(),
 				target = buildTarget,
 				locationPathName = values["-outputPath"],
 			};

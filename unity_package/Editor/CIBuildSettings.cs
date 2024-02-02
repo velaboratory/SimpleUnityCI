@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
@@ -61,6 +62,7 @@ namespace SimpleUnityCI
 	}
 
 
+#if UNITY_EDITOR
 	[CustomEditor(typeof(CIBuildSettings))]
 	public class TestScriptableEditor : Editor
 	{
@@ -68,14 +70,16 @@ namespace SimpleUnityCI
 		{
 			base.OnInspectorGUI();
 			CIBuildSettings script = (CIBuildSettings)target;
+			
+			GUILayout.Space(10);
 
-			if (GUILayout.Button("Build Window", GUILayout.Height(40)))
+			if (GUILayout.Button("Build Window"))
 			{
 				// EditorWindow.GetWindow(System.Type.GetType("SimpleUnityCI.CIWindow,UnityEditor"));
 				EditorApplication.ExecuteMenuItem("Window/Simple Unity CI");
 			}
 
-			if (GUILayout.Button("Build", GUILayout.Height(40)))
+			if (GUILayout.Button("Build Remotely", GUILayout.Height(40)))
 			{
 				// make a request to the build server with the buildsettings as the post body
 				script.buildServer = script.buildServer.TrimEnd('/');
@@ -85,6 +89,23 @@ namespace SimpleUnityCI
 				UnityWebRequest www = UnityWebRequest.Post(url, JsonConvert.SerializeObject(script.ToDict()), "application/json");
 				www.SendWebRequest();
 			}
+
+			if (GUILayout.Button("Build Locally", GUILayout.Height(40)))
+			{
+				if (script.androidKeystoreSettings.keystoreName != "") PlayerSettings.Android.keystoreName = script.androidKeystoreSettings.keystoreName;
+				if (script.androidKeystoreSettings.keystorePass != "") PlayerSettings.Android.keystorePass = script.androidKeystoreSettings.keystorePass;
+				if (script.androidKeystoreSettings.keyaliasName != "") PlayerSettings.Android.keyaliasName = script.androidKeystoreSettings.keyaliasName;
+				if (script.androidKeystoreSettings.keyaliasPass != "") PlayerSettings.Android.keyaliasPass = script.androidKeystoreSettings.keyaliasPass;
+				BuildPlayerOptions options = new BuildPlayerOptions
+				{
+					scenes = (from scene in EditorBuildSettings.scenes where scene.enabled select scene.path).ToArray(),
+					target = EditorUserBuildSettings.activeBuildTarget,
+					locationPathName = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android ? $"Builds/SUCI/{Application.productName}.apk" : $"Builds/SUCI/Build",
+				};
+
+				BuildPipeline.BuildPlayer(options);
+			}
 		}
 	}
+#endif
 }
