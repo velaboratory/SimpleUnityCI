@@ -44,6 +44,7 @@ def list_tasks():
                     pass
         output.append({"task_id": p, "metadata": metadata, "files": modified_times})
 
+    output.sort(key=lambda x: x["files"]["task.log"] if "task.log" in x["files"] else datetime.now(), reverse=False)
     return output
 
 

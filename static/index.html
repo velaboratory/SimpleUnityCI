@@ -108,7 +108,7 @@
 
         function taskBlock(t) {
             return `<blockquote>
-                ${t.metadata.git_repo ? `<a href="/tasks/${t.task_id}/metadata.json" target="_blank"><h4 style='margin:.5rem;'>${t.metadata.git_repo}</h4></a>` : ''}
+                ${t.metadata.git_repo ? `<a href="/tasks/${t.task_id}/metadata.json" target="_blank"><h4 style='margin:.5rem;'>${t.metadata.git_repo.replace('git@github.com:', '').replace('.git', '')} - ${t.metadata.build_target} - ${t.metadata.branch}</h4></a>` : ''}
                 ${Object.keys(t.files).map(p =>
                 `<div><a href='/tasks/${t.task_id}/${p}' target="_blank">${p}</a> - ${t.files[p] ? dayjs(t.files[p]).format('YYYY-MM-DD hh:mm A') : 'N/A'} - ${t.files[p] ? dayjs(t.files[p]).fromNow() : ''}</div>`).join('')
                 }

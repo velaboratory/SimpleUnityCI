@@ -39,6 +39,7 @@ class BuildTargetEnum(str, Enum):
 
 class UnityBuildRequest(BaseModel):
     git_repo: str
+    branch: str = "main"
     build_target: BuildTargetEnum
     oculus_app_id: str | None = None
     oculus_app_secret: str | None = None
@@ -202,6 +203,8 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         r = Repo.clone_from(request_data.git_repo, path)
     repo = Repo(path)
     repo.git.reset("--hard")
+    repo.git.fetch()
+    repo.git.checkout(request_data.branch)
     repo.remotes.origin.pull()
 
     project = find_unity_project_in_path(task_id, path)

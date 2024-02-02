@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace SimpleUnityCI
 {
@@ -9,6 +11,7 @@ namespace SimpleUnityCI
 	{
 		public string buildServer = "https://";
 		public string gitRepo = "git@github.com:org/proj.git";
+		public string branch = "";
 
 		public enum BuildTargets
 		{
@@ -44,6 +47,7 @@ namespace SimpleUnityCI
 			return new Dictionary<string, string>
 			{
 				{ "git_repo", gitRepo },
+				{ "branch", branch },
 				{ "build_target", buildTarget.ToString() },
 				{ "oculus_app_id", oculusUploadSettings.oculusAppId },
 				{ "oculus_app_secret", oculusUploadSettings.oculusAppSecret },
@@ -69,6 +73,17 @@ namespace SimpleUnityCI
 			{
 				// EditorWindow.GetWindow(System.Type.GetType("SimpleUnityCI.CIWindow,UnityEditor"));
 				EditorApplication.ExecuteMenuItem("Window/Simple Unity CI");
+			}
+
+			if (GUILayout.Button("Build", GUILayout.Height(40)))
+			{
+				// make a request to the build server with the buildsettings as the post body
+				script.buildServer = script.buildServer.TrimEnd('/');
+				string url = script.buildServer + "/build";
+				Debug.Log(url);
+				Debug.Log(JsonConvert.SerializeObject(script.ToDict()));
+				UnityWebRequest www = UnityWebRequest.Post(url, JsonConvert.SerializeObject(script.ToDict()), "application/json");
+				www.SendWebRequest();
 			}
 		}
 	}

@@ -2,6 +2,7 @@
     <ui:ScrollView style="margin-left: 11px; margin-right: 11px; margin-top: 11px; margin-bottom: 11px;">
         <ui:Label tabindex="-1" text="Build Settings" display-tooltip-when-elided="true" style="-unity-font-style: bold;" />
         <uie:ObjectField label="Build Settings" type="SimpleUnityCI.CIBuildSettings, SimpleUnityCI" binding-path="build-settings-field" />
+        <ui:Label tabindex="-1" text="Note: This clones from the git remote url and doesn&apos;t use the changes you have locally." display-tooltip-when-elided="true" style="margin-top: 22px; white-space: normal; font-size: 16px;" />
         <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row; flex-shrink: 1;">
             <ui:Button text="Create Build Settings" display-tooltip-when-elided="true" class="create-build-settings-button" style="padding-top: 16px; padding-bottom: 16px; padding-left: 16px; padding-right: 16px; margin-top: 13px; flex-grow: 1;" />
             <ui:Button text="BUILD" display-tooltip-when-elided="true" binding-path="m_BuildButton" class="build-button" style="padding-top: 16px; padding-bottom: 16px; padding-left: 16px; padding-right: 16px; margin-top: 13px; flex-grow: 1;" />
