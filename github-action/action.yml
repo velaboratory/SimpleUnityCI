@@ -1,13 +1,40 @@
 name: 'Simple Unity CI'
 description: 'Build a Unity project with SimpleUnityCI'
 inputs:
-  url:
+  build_server:
     description: 'URL of your build server'
     required: true
-  data:
-    description: 'Request data JSON'
+
+  git_repo:
+    description: ''
     required: true
-    default: ''
+  branch:
+    description: ''
+    required: true
+  build_target:
+    description: ''
+    required: true
+  keystore_name:
+    description: ''
+    required: true
+  keystore_pass:
+    description: ''
+    required: true
+  keyalias_name:
+    description: ''
+    required: true
+  keyalias_pass:
+    description: ''
+    required: true
+  oculus_app_id:
+    description: ''
+    required: true
+  oculus_app_secret:
+    description: ''
+    required: true
+  oculus_release_channel:
+    description: ''
+    required: true
 runs:
   using: 'node20'
   main: 'dist/index.js'
