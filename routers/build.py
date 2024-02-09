@@ -125,7 +125,7 @@ def find_unity_install(task_id: str, version: str) -> str | None:
             elif sys.platform == "darwin":
                 return os.path.join(installs_folder, p, "Unity.app", "Contents", "MacOS", "Unity")
             else:
-                log("Unsupported platform!")
+                log(task_id, "Unsupported platform!")
                 return None
     log(task_id, f"Unity version not found! {version}")
     return None
@@ -244,10 +244,10 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     elif sys.platform == "darwin":
         args = args.replace("`", "")
         cmd = f"{unity_install} {args}"
-        log(cmd)
+        log(task_id, cmd)
         ret = os.system(cmd)
     else:
-        log("Platform not supported!")
+        log(task_id, "Platform not supported!")
         log(task_id, "Failed.")
         return
     log(task_id, f"Finished in {time.time() - start_time:.3f} s")
