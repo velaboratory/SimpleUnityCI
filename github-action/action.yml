@@ -1,13 +1,13 @@
-name: 'Hello World'
-description: 'Greet someone and record the time'
+name: 'Simple Unity CI'
+description: 'Build a Unity project with SimpleUnityCI'
 inputs:
-  who-to-greet:  # id of input
-    description: 'Who to greet'
+  url:
+    description: 'URL of your build server'
     required: true
-    default: 'World'
-outputs:
-  time: # id of output
-    description: 'The time we greeted you'
+  data:
+    description: 'Request data JSON'
+    required: true
+    default: ''
 runs:
   using: 'node20'
   main: 'dist/index.js'
