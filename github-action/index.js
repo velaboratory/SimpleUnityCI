@@ -19,7 +19,12 @@ try {
   console.log(data);
   const startTime = new Date();
   console.log(startTime)
-  const r = fetch(buildUrl, { method: 'POST', body: data }).then(r => r.json()).then(r => {
+  const r = fetch(buildUrl, {
+    method: 'POST',
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    body: data
+  }).then(r => r.json()).then(r => {
     console.log(new Date())
     console.log(r)
   })
