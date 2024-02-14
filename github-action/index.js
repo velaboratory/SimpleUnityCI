@@ -23,7 +23,7 @@ try {
     method: 'POST',
     Accept: 'application/json',
     'Content-Type': 'application/json',
-    body: data
+    body: JSON.stringify(data)
   }).then(r => r.json()).then(r => {
     console.log(new Date())
     console.log(r)
