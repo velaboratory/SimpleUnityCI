@@ -25,17 +25,19 @@ try {
     'Content-Type': 'application/json',
     body: JSON.stringify(data)
   })
+    .then(r => {
+      if (r.status !== 200) {
+        console.error(r.text())
+        throw new Error('Failed to start build')
+      }
+    })
+    .then(r => r.text())
     .then(async taskId => {
       console.log(new Date())
       console.log(taskId)
       // wait for 15 minutes, checking the task status
       while (new Date() - startTime < 2 * 1000) {
-        fetch(`${buildUrl}/tasks/${taskId}/task.log`, {
-          method: 'GET',
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          body: JSON.stringify(data)
-        }).then(taskLog => {
+        fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(taskLog => {
           console.log(new Date())
           console.log(taskLog)
         })
