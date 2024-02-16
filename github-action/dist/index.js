@@ -30826,11 +30826,13 @@ try {
     'Content-Type': 'application/json',
     body: JSON.stringify(data)
   })
-    .then(r => {
+    .then(async r => {
+      let text = await r.text();
+      console.error(text)
       if (r.status !== 200) {
-        console.error(r.text())
-        return r;
+        throw new Error(text);
       }
+      return text;
     })
     .then(r => r.text())
     .then(async taskId => {
