@@ -35,12 +35,11 @@ try {
       }
       return text;
     })
-    .then(r => r.text())
     .then(async taskId => {
       console.log(new Date())
       console.log(taskId)
       // wait for 15 minutes, checking the task status
-      while (new Date() - startTime < 2 * 1000) {
+      while (new Date() - startTime < 5 * 1000) {
         fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(taskLog => {
           console.log(new Date())
           console.log(taskLog)
