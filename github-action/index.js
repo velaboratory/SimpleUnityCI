@@ -43,11 +43,8 @@ try {
       console.log(taskId)
       // wait for 15 minutes, checking the task status
       while (new Date() - startTime < 60 * 1000) {
-        const taskLogData = await fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(async taskLog => {
-          console.log(new Date())
-          console.log(taskLog)
-          return await taskLog.text();
-        })
+        const taskLogData = await fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(r => r.text())
+        console.log(new Date())
         if (taskLogData.includes('Success.')) {
           core.setOutput('build_status', 'success')
           console.log("DONE")
