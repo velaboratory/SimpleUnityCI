@@ -30822,9 +30822,10 @@ try {
   console.log(startTime)
   fetch(`${buildUrl}/build`, {
     method: 'POST',
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-    'Accept-Encoding': 'gzip, deflate, br',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(data)
   })
     .then(async r => {
