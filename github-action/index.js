@@ -28,7 +28,7 @@ try {
     .then(r => {
       if (r.status !== 200) {
         console.error(r.text())
-        throw new Error('Failed to start build')
+        return r;
       }
     })
     .then(r => r.text())
