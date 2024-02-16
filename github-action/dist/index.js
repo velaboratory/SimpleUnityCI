@@ -30824,6 +30824,7 @@ try {
     method: 'POST',
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    'Accept-Encoding': 'gzip, deflate, br',
     body: JSON.stringify(data)
   })
     .then(async r => {
