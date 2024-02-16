@@ -28,25 +28,35 @@ try {
     body: JSON.stringify(data)
   })
     .then(async r => {
-      let text = await r.text();
+      let text = await r.json();
       console.error(text)
       if (r.status !== 200) {
         throw new Error(text);
       }
       return text;
     })
+    .then(r => {
+      return r.task_id
+    })
     .then(async taskId => {
       console.log(new Date())
       console.log(taskId)
       // wait for 15 minutes, checking the task status
-      while (new Date() - startTime < 5 * 1000) {
-        fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(taskLog => {
+      while (new Date() - startTime < 60 * 1000) {
+        const taskLogData = fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(taskLog => {
           console.log(new Date())
           console.log(taskLog)
+          return taskLog;
         })
+        if (taskLogData.includes('Success.')) {
+          core.setOutput('build_status', 'success')
+          console.log("DONE")
+          return
+        }
         console.log('waiting for build to finish...')
         await new Promise(r3 => setTimeout(r3, 1000))
       }
+      core.setFailed(error.message);
     })
 
 
