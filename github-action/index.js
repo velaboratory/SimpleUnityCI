@@ -19,15 +19,32 @@ try {
   console.log(data);
   const startTime = new Date();
   console.log(startTime)
-  const r = fetch(buildUrl, {
+  const r = fetch(`${buildUrl}/build`, {
     method: 'POST',
     Accept: 'application/json',
     'Content-Type': 'application/json',
     body: JSON.stringify(data)
-  }).then(r => r.json()).then(r => {
-    console.log(new Date())
-    console.log(r)
   })
+    .then(async r => {
+      console.log(new Date())
+      console.log(r)
+      // wait for 15 minutes, checking the task status
+      while (new Date() - startTime < /*15 * */60 * 1000) {
+        const r = fetch(`${buildUrl}/tasks/${r}/task.log`, {
+          method: 'POST',
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          body: JSON.stringify(data)
+        }).then(r => r.json()).then(r => {
+          console.log(new Date())
+          console.log(r)
+        })
+        console.log('waiting for build to finish...')
+        await new Promise(r => setTimeout(r, 1000))
+      }
+    })
+
+
 } catch (error) {
   core.setFailed(error.message);
 }
