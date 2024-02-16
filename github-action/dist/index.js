@@ -30820,28 +30820,28 @@ try {
   console.log(data);
   const startTime = new Date();
   console.log(startTime)
-  const r = fetch(`${buildUrl}/build`, {
+  fetch(`${buildUrl}/build`, {
     method: 'POST',
     Accept: 'application/json',
     'Content-Type': 'application/json',
     body: JSON.stringify(data)
   })
-    .then(async r => {
+    .then(async taskId => {
       console.log(new Date())
-      console.log(r)
+      console.log(taskId)
       // wait for 15 minutes, checking the task status
       while (new Date() - startTime < /*15 * */60 * 1000) {
-        const r = fetch(`${buildUrl}/tasks/${r}/task.log`, {
+        fetch(`${buildUrl}/tasks/${taskId}/task.log`, {
           method: 'POST',
           Accept: 'application/json',
           'Content-Type': 'application/json',
           body: JSON.stringify(data)
-        }).then(r => r.json()).then(r => {
+        }).then(taskLog => {
           console.log(new Date())
-          console.log(r)
+          console.log(taskLog)
         })
         console.log('waiting for build to finish...')
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise(r3 => setTimeout(r3, 1000))
       }
     })
 
