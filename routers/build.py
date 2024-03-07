@@ -194,13 +194,18 @@ def upload_build(task_id: str, request_data: UnityBuildRequest, build_path: str)
     log(task_id, "Done uploading")
 
 
-async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
+def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     start_time = time.time()
     task_folder = os.path.join(tasks_folder, task_id)
     os.makedirs(task_folder, exist_ok=True)
     os.makedirs(projects_folder, exist_ok=True)
     log(task_id, f"Starting task: {task_id}")
     with open(os.path.join(task_folder, "metadata.json"), "w") as f:
+        out_json = request_data.__dict__
+        secrets = ["keystore_pass", "keyalias_pass", "oculus_app_secret"]
+        for s in secrets:
+            if s in out_json:
+                out_json[s] = "***"
         f.write(json.dumps(request_data.__dict__, indent=4))
 
     git_repo_data = parse_git_repo(task_id, request_data.git_repo, request_data.build_target)
@@ -244,7 +249,7 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         cmd = f'$unity = Start-Process -FilePath "{unity_install}" -ArgumentList "{args}" -PassThru\n'
         with open("PS1Wait.ps1", "r") as f:
             cmd += f.read()
-        with open(os.path.join(task_folder, f"build.ps1"), "w") as f:
+        with open(os.path.join(task_folder, "build.ps1"), "w") as f:
             f.write(cmd)
 
         cmd = f'powershell.exe -command ".\\{task_folder}\\build.ps1"'
@@ -265,9 +270,12 @@ async def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         log(task_id, os.path.join(task_folder, build_path))
         if request_data.oculus_app_id is not None:
             upload_build(task_id, request_data, build_path)
+        else:
+            log(task_id, "Not uploading to Oculus")
         log(task_id, "Success.")
         return True
     else:
+        log(task_id, f"No build found2: {os.path.join(task_folder, build_path)}")
         log(task_id, "Failed.")
         return False
 
