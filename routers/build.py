@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import sys
 from enum import Enum
 import subprocess
@@ -144,40 +145,48 @@ def upload_build(task_id: str, request_data: UnityBuildRequest, build_path: str)
             os.system(f'./{os.path.join("tools","ovr-platform-util")}' + args)
     elif request_data.build_target == BuildTargetEnum.StandaloneWindows64:
         build_folder = os.path.dirname(build_path)
+        # Remove debug files
+        for folder in glob.glob(f"{build_folder}/*_BackUpThisFolder_ButDontShipItWithYourGame", recursive=False):
+            shutil.rmtree(folder)
+
         git_repo_data = parse_git_repo(task_id, request_data.git_repo, request_data.build_target)
-        settings_file = glob.glob(f"{git_repo_data}/**/ProjectSettings.asset")[0]
+        if git_repo_data is None:
+            log(task_id, "Failed to parse git repo: 4237")
+            return
+        settings_file = glob.glob(f"{git_repo_data.path}/**/ProjectSettings.asset")[0]
         with open(settings_file, "r") as f:
             text = f.read()
             app_version = re.search("bundleVersion: (.*)", text)
+            if app_version is not None:
+                app_version = app_version.group(1)
+            else:
+                log(task_id, "Failed to parse app version")
+                return
             log(task_id, f"{app_version=}")
 
         with open(os.path.join(tasks_folder, task_id, "task.log"), "a") as f:
-            return_code = subprocess.call(
-                [
-                    os.path.join("tools\\ovr-platform-util.exe"),
-                    "upload-rift-build",
-                    "--app-id",
-                    request_data.oculus_app_id,
-                    "--app-secret",
-                    request_data.oculus_app_secret,
-                    "--build-dir",
-                    build_folder,
-                    "--launch-file",
-                    build_path,
-                    "--launch-file-2d",
-                    build_path,
-                    "-p",
-                    "-useVR",
-                    "--launch-params-2d",
-                    "-2dmode",
-                    "--channel",
-                    release_channel,
-                    "--version",
-                    app_version,
-                ],  # type: ignore
-                stdout=f,
-                stderr=f,
-            )
+            args = [
+                "upload-rift-build",
+                "--app-id",
+                request_data.oculus_app_id,
+                "--app-secret",
+                request_data.oculus_app_secret,
+                "--build-dir",
+                build_folder,
+                "--launch-file",
+                build_path,
+                "--launch-file-2d",
+                build_path,
+                "--launch-params",
+                " \-vrmode",
+                "--launch-params-2d",
+                " -2dmode",
+                "--channel",
+                release_channel,
+                "--version",
+                app_version,
+            ]
+            return_code = os.system(f'{os.path.join("tools","ovr-platform-util.exe")} {" ".join(args)}')
             log(task_id, str(return_code))
     else:
         log(task_id, "Platform not supported for upload")

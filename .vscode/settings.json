@@ -2,10 +2,13 @@
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "ms-python.black-formatter",
-    "black-formatter.args": [
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "ruff.format.args": [
         "--line-length=120"
     ],
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
     "[html]": {
         "editor.defaultFormatter": "vscode.html-language-features"
     },
@@ -15,5 +18,8 @@
     "[javascript]": {
         "editor.defaultFormatter": "vscode.typescript-language-features"
     },
-    "git.followTagsWhenSync": true
+    "git.followTagsWhenSync": true,
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    }
 }
