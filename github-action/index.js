@@ -1,6 +1,9 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
 
+// How long to wait for the build to finish before giving up.
+const waitTime = 15 * 60 * 1000;
+
 try {
   const buildUrl = core.getInput('build_server');
   const data = {
@@ -41,9 +44,10 @@ try {
     .then(async taskId => {
       console.log(new Date())
       console.log(taskId)
+      let taskLogData;
       // wait for 15 minutes, checking the task status
-      while (new Date() - startTime < 60 * 1000) {
-        const taskLogData = await fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(r => r.text())
+      while (new Date() - startTime < waitTime) {
+        taskLogData = await fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(r => r.text())
         console.log(new Date())
         if (taskLogData.includes('Success.')) {
           core.setOutput('build_status', 'success')
@@ -58,10 +62,9 @@ try {
         console.log('waiting for build to finish...')
         await new Promise(r3 => setTimeout(r3, 1000))
       }
-      core.setFailed(error.message);
+      console.log(taskLogData)
+      core.setFailed(`Waited ${waitTime / 1000} seconds and the build didn't finish. Giving up.`);
     })
-
-
 } catch (error) {
   core.setFailed(error.message);
 }
