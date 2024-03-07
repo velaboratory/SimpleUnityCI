@@ -4,7 +4,8 @@ This github action calls the POST endpoint to build on the specified server, the
 
 ## Building
 
-1. `npm run build`
+1. Build the index.js and dependencies into a single file:
+   1. `npm run build`
 2. Upload the files and a tag to github:
    1. `git commit -am "new stuff"`
    2. `git tag v16`
