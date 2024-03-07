@@ -30802,6 +30802,9 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(5507);
 const github = __nccwpck_require__(7152);
 
+// How long to wait for the build to finish before giving up.
+const waitTime = 15 * 60 * 1000;
+
 try {
   const buildUrl = core.getInput('build_server');
   const data = {
@@ -30843,7 +30846,7 @@ try {
       console.log(new Date())
       console.log(taskId)
       // wait for 15 minutes, checking the task status
-      while (new Date() - startTime < 60 * 1000) {
+      while (new Date() - startTime < waitTime) {
         const taskLogData = await fetch(`${buildUrl}/tasks/${taskId}/task.log`).then(r => r.text())
         console.log(new Date())
         if (taskLogData.includes('Success.')) {
@@ -30859,7 +30862,7 @@ try {
         console.log('waiting for build to finish...')
         await new Promise(r3 => setTimeout(r3, 1000))
       }
-      core.setFailed(error.message);
+      core.setFailed(`Waited ${waitTime / 1000} seconds and the build didn't finish. Giving up.`);
     })
 
 
