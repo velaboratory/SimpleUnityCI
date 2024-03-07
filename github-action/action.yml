@@ -16,25 +16,25 @@ inputs:
     required: true
   keystore_name:
     description: ''
-    required: true
+    required: false
   keystore_pass:
     description: ''
-    required: true
+    required: false
   keyalias_name:
     description: ''
-    required: true
+    required: false
   keyalias_pass:
     description: ''
-    required: true
+    required: false
   oculus_app_id:
     description: ''
-    required: true
+    required: false
   oculus_app_secret:
     description: ''
-    required: true
+    required: false
   oculus_release_channel:
     description: ''
-    required: true
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'
