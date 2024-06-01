@@ -100,18 +100,23 @@
     <script defer>
         dayjs.extend(dayjs_plugin_relativeTime)
 
-        fetch('/tasks')
-            .then(r => r.json())
-            .then(t => {
-                tasks.innerHTML = t.reverse().map(t => taskBlock(t)).join('\n')
-            })
+        function refresh() {
+            fetch('/tasks')
+                .then(r => r.json())
+                .then(t => {
+                    tasks.innerHTML = t.reverse().map(t => taskBlock(t)).join('\n')
+                })
+                .then(refreshBuildLog)
+        }
+
 
         function taskBlock(t) {
             return `<blockquote>
                 ${t.metadata.git_repo ? `<a href="/tasks/${t.task_id}/metadata.json" target="_blank"><h4 style='margin:.5rem;'>${t.metadata.git_repo.replace('git@github.com:', '').replace('.git', '')} - ${t.metadata.build_target} - ${t.metadata.branch}</h4></a>` : ''}
                 ${Object.keys(t.files).map(p =>
-                `<div><a href='/tasks/${t.task_id}/${p}' target="_blank">${p}</a> - ${t.files[p] ? dayjs(t.files[p]).format('YYYY-MM-DD hh:mm A') : 'N/A'} - ${t.files[p] ? dayjs(t.files[p]).fromNow() : ''}</div>`).join('')
+                `<div><a href='/tasks/${t.task_id}/${p}' target="_blank" modified="${dayjs(t.files[p]).valueOf()}">${p}</a> - ${t.files[p] ? dayjs(t.files[p]).format('YYYY-MM-DD hh:mm A') : 'N/A'} - ${t.files[p] ? dayjs(t.files[p]).fromNow() : ''}</div>`).join('')
                 }
+                <pre><code class="log"></code></pre>
                 </blockquote >`
         }
 
@@ -126,6 +131,27 @@
             .then(t => {
                 versions.innerHTML = t.reverse().map(t => `<li>${t}</li>`).join('\n')
             })
+
+        function refreshBuildLog(maxAge = 60 * 60 * 24) {
+            const modifiedAfter = dayjs().subtract(maxAge, 'second').valueOf()
+            const blocks = document.querySelectorAll('blockquote')
+            for (const b of blocks) {
+                const links = Array.from(b.querySelectorAll('a')).filter(a => a.textContent === 'build.log').filter(a => parseInt(a.getAttribute("modified")) > modifiedAfter)
+                if (links.length > 1) {
+                    console.error('More than one build.log found')
+                }
+                if (links.length == 1) {
+                    const a = links[0]
+                    fetch(a.href)
+                        .then(r => r.text())
+                        .then(t => {
+                            b.querySelector('.log').textContent = t.slice(-1000)
+                        })
+                }
+            }
+        }
+        setInterval(refresh, 10000)
+        refresh()
     </script>
     <script>
 

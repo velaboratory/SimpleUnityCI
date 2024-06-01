@@ -28,10 +28,10 @@ archive.zip
 # macOS
 .DS_Store
 
-
 env/
 temp_build_scripts/
 tasks/
 unity_projects/
 projects/
 logs/
+.env

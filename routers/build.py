@@ -3,17 +3,14 @@ import os
 import shutil
 import sys
 from enum import Enum
-import subprocess
-import sys
-import os
 import time
 import uuid
-from fastapi import BackgroundTasks, Request, APIRouter, Response
+from fastapi import BackgroundTasks, Request, APIRouter
 from pydantic import BaseModel
 import re
 from git import Repo
 import glob
-from config import installs_folder, tasks_folder, projects_folder
+from config import UNITY_INSTALLS_FOLDER, TASKS_FOLDER, PROJECTS_FOLDER
 
 
 router = APIRouter(tags=["Build"])
@@ -82,7 +79,7 @@ def build_project(request_data: UnityBuildRequest, background_tasks: BackgroundT
 
 
 def parse_git_repo(task_id: str, git_repo: str, build_target: BuildTargetEnum) -> GitRepo | None:
-    regex = r"(?:https:\/\/|git@)(?:github\.com[:\/])?([\w-]+)\/([\w-]+)\.git"
+    regex = r"(?:https:\/\/|git@)(?:.*github\.com[:\/])?([\w-]+)\/([\w-]+)\.git"
     match = re.search(regex, git_repo)
     if match:
         org_name = match.group(1)
@@ -91,7 +88,7 @@ def parse_git_repo(task_id: str, git_repo: str, build_target: BuildTargetEnum) -
             git_repo=git_repo,
             org=org_name,
             project=project_name,
-            path=os.path.join(projects_folder, org_name, project_name, build_target),
+            path=os.path.join(PROJECTS_FOLDER, org_name, project_name, build_target),
         )
     else:
         log(task_id, "Not a valid github url: " + git_repo)
@@ -117,14 +114,17 @@ def find_unity_project_in_path(task_id: str, path: str) -> UnityProject | None:
 
 
 def find_unity_install(task_id: str, version: str) -> str | None:
-    paths = os.listdir(installs_folder)
+    if not os.path.exists(UNITY_INSTALLS_FOLDER):
+        log(task_id, "Unity installs folder not found!\n" + UNITY_INSTALLS_FOLDER)
+        return None
+    paths = os.listdir(UNITY_INSTALLS_FOLDER)
     for p in paths:
         if p == version:
             log(task_id, "Unity version found: " + p)
             if sys.platform == "win32":
-                return os.path.join(installs_folder, p, "Editor", "Unity.exe")
+                return os.path.join(UNITY_INSTALLS_FOLDER, p, "Editor", "Unity.exe")
             elif sys.platform == "darwin":
-                return os.path.join(installs_folder, p, "Unity.app", "Contents", "MacOS", "Unity")
+                return os.path.join(UNITY_INSTALLS_FOLDER, p, "Unity.app", "Contents", "MacOS", "Unity")
             else:
                 log(task_id, "Unsupported platform!")
                 return None
@@ -164,7 +164,7 @@ def upload_build(task_id: str, request_data: UnityBuildRequest, build_path: str)
                 return
             log(task_id, f"{app_version=}")
 
-        with open(os.path.join(tasks_folder, task_id, "task.log"), "a") as f:
+        with open(os.path.join(TASKS_FOLDER, task_id, "task.log"), "a") as f:
             args = [
                 "upload-rift-build",
                 "--app-id",
@@ -178,7 +178,7 @@ def upload_build(task_id: str, request_data: UnityBuildRequest, build_path: str)
                 "--launch-file-2d",
                 build_path,
                 "--launch-params",
-                " \-vrmode",
+                " \\-vrmode",
                 "--launch-params-2d",
                 " -2dmode",
                 "--channel",
@@ -196,17 +196,17 @@ def upload_build(task_id: str, request_data: UnityBuildRequest, build_path: str)
 
 def run_unity_build(request_data: UnityBuildRequest, task_id: str):
     start_time = time.time()
-    task_folder = os.path.join(tasks_folder, task_id)
+    task_folder = os.path.join(TASKS_FOLDER, task_id)
     os.makedirs(task_folder, exist_ok=True)
-    os.makedirs(projects_folder, exist_ok=True)
+    os.makedirs(PROJECTS_FOLDER, exist_ok=True)
     log(task_id, f"Starting task: {task_id}")
     with open(os.path.join(task_folder, "metadata.json"), "w") as f:
-        out_json = request_data.__dict__
+        out_json = {**request_data.__dict__}
         secrets = ["keystore_pass", "keyalias_pass", "oculus_app_secret"]
         for s in secrets:
             if s in out_json:
                 out_json[s] = "***"
-        f.write(json.dumps(request_data.__dict__, indent=4))
+        f.write(json.dumps(out_json, indent=4))
 
     git_repo_data = parse_git_repo(task_id, request_data.git_repo, request_data.build_target)
     if git_repo_data is None:
@@ -214,7 +214,7 @@ def run_unity_build(request_data: UnityBuildRequest, task_id: str):
         return
     path = git_repo_data.path
     if not os.path.exists(path):
-        r = Repo.clone_from(request_data.git_repo, path)
+        Repo.clone_from(request_data.git_repo, path)
     repo = Repo(path)
     repo.git.reset("--hard")
     repo.git.fetch()
@@ -282,6 +282,6 @@ def run_unity_build(request_data: UnityBuildRequest, task_id: str):
 
 def log(task_id: str, message: str):
     print(message)
-    log_file = os.path.join(tasks_folder, task_id, "task.log")
+    log_file = os.path.join(TASKS_FOLDER, task_id, "task.log")
     with open(log_file, "a") as f:
         f.write(message + "\n")
